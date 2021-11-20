@@ -1,0 +1,1 @@
+find . -name '*.html' -o -name '*.py' -o -name '*.css' -o -name '*.js' ! -name Template.html | sed '/^\.\/T/d' | sed 's/.*/"&"/' | xargs  wc -l

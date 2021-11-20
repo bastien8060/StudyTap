@@ -1,0 +1,73 @@
+{   
+    "server_port":80,
+    "server_bind_address":"0.0.0.0",
+    "server_debug_mode":true,
+    "server_debug_logging":false,
+    "server_database_path":"./database/studytap.db",
+    "server_database_threadsafety":false,
+    "server_static_folder":"www",
+    "session_type":"memcached",
+    "session_masterkey":"StudyTap_LbhXu6yA^^VnWD%AzWL5C&MB-J39sZ@=+&hpzMNQvs!ZCzQq+%MD!+kcC&5nMFFHvF@fpwDads_kTvQ^=#AhE9kAG84jThcVt8T%vjRGUH8t8npwzRdsH_ZT$Sy?+9e_c4UrjNx4dkSsPXXc=T5N&WWL#J5GaJT?jn@QW=q_xM_CAjJZDV5xTFd9gUQ9$mfJF5ex7QeRvwqRRN$&KT%WRXB?u9x6kz=8G^^j2kD#qbWFCPgQ#U_gv5Z94@&+ux",
+    "routes": [
+        {
+            "name": "Register Page",
+            "path": "register",
+            "url": "./pages/register.html",
+            "dynamic":false
+        },
+        {
+            "name": "About Page",
+            "path": "about",
+            "url": "./pages/about_us.html",
+            "dynamic":false
+        },
+        {
+            "name": "Login Page",
+            "path": "login",
+            "url": "./pages/login.html",
+            "dynamic":false
+        },
+        {
+            "name": "User Home Page",
+            "path": "home",
+            "url": "./pages/home.html",
+            "dynamic":false
+        },
+        {
+            "name": "Add New Subject Page",
+            "path": "add/subject",
+            "url": "./pages/add_subject.html",
+            "dynamic":false
+        },
+        {
+            "name": "Start Revision for current topic.",
+            "path": "subject\/[0-9]{1,9999}\/topic\/[0-9]{1,9999}\/revise",
+            "url": "./pages/revise.html",
+            "dynamic":true
+        },
+        {
+            "name": "Add Revision Note to Topic",
+            "path": "add/subject\/[0-9]{1,9999}\/topic\/[0-9]{1,9999}\/note",
+            "url": "./pages/add_note.html",
+            "dynamic":true
+        },
+        {
+            "name": "View Subject Topics Page",
+            "path": "subject\/[0-9]{1,9999}\/topics",
+            "url": "./pages/topics.html",
+            "dynamic":true
+        },
+        {
+            "name": "Add Topic to Subject Page",
+            "path": "add/subject\/[0-9]{1,9999}\/topic",
+            "url": "./pages/add_topic.html",
+            "dynamic":true
+        },
+        {
+            "name": "Subject's Topic Homepage",
+            "path": "subject\/[0-9]{1,9999}\/topic\/[0-9]{1,9999}",
+            "url": "./pages/topic_home.html",
+            "dynamic":true
+        }
+    ]
+}
