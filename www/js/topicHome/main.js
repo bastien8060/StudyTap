@@ -151,7 +151,7 @@ function RenderTopicsCards(s,subjectName="null"){
 
         var card__content = document.createElement('p');
         card__content.setAttribute("slot","content");
-        card__content.textContent = answer;
+        card__content.innerHTML = answer;
 
         card.appendChild(card__title);
         card.appendChild(card__content);
