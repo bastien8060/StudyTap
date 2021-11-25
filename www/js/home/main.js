@@ -97,6 +97,9 @@ if (!isLoggedIn()){
 
 Subjects = getSubjects()
 RenderSubjectCards(Subjects);
+if (Subjects.length == 0){
+  $(".msg_info").html("No Subjects <i>yet</i>&nbsp;! Click <i class=\"fad fa-plus-circle\"></i> above to add a subject")
+}
 
 var speed = 'slow';
 

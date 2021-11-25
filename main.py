@@ -189,6 +189,15 @@ def redir_favicon(path="index.html"):
     return send_from_directory(configs["server_static_folder"], "favicon.ico")
 
 
+@app.route('/pdf/mindmap.pdf')
+def redir_mindmap(path="index.html"):
+    return send_from_directory(configs["server_static_folder"], "Research/StudyTap Mindmap.pdf")
+
+@app.route('/pdf/housestyle.pdf')
+def redir_housestyle(path="index.html"):
+    return send_from_directory(configs["server_static_folder"], "Research/House Style.pdf")
+
+
 @app.route('/alt') #tiddlywiky
 def see_alt():
     return send_from_directory(".", "Template.html")

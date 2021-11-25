@@ -144,6 +144,9 @@ if (!isLoggedIn()){
 Topics = getTopics()
 SubjectsInfo = getSubjectInfo()
 RenderTopicsCards(Topics,subjectName=SubjectsInfo["name"])
+if (Topics.length == 0){
+  $(".msg_info").html("No Subjects <i>yet</i>&nbsp;! Click <i class=\"fad fa-plus-circle\"></i> above to add a subject")
+}
 
 var speed = 'slow';
 
