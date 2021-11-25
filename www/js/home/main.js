@@ -114,3 +114,19 @@ $(document).ready(function() {
         });
     });
 });
+
+function logout(){
+        Swal.fire({
+          title: 'Are you sure?',
+          text: "This action will log you out of your account",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'Yes, log out'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location = '/api/logout/redir';
+          }
+        })
+      }

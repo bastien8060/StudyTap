@@ -35,6 +35,12 @@ def test():
     json_obj = json.loads(json_str)
     return json_obj
 
+@app.route('/api/logout/redir')
+def api_interactive_logout(prefill=False):
+  if helper.isloggedin(session):
+    session.clear()
+  return redirect("/web/", code=302)
+
 @app.route('/api/v1/login', methods = ['POST','GET'])
 def api_login(prefill=False):
     if request.method == 'POST':
@@ -178,7 +184,12 @@ def redirect_to_folder():
 def redir_to_html(path="index.html"):
     return send_from_directory(configs["server_static_folder"], "index.html")
 
-@app.route('/alt')
+@app.route('/favicon.ico')
+def redir_favicon(path="index.html"):
+    return send_from_directory(configs["server_static_folder"], "favicon.ico")
+
+
+@app.route('/alt') #tiddlywiky
 def see_alt():
     return send_from_directory(".", "Template.html")
 

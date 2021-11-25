@@ -129,7 +129,7 @@ function getNotes(){
     };
     xhr.send();
     //console.log(returnval)
-    return returnval
+    return returnval.slice(0,50);
 }
 
 

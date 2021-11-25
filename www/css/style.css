@@ -15,6 +15,7 @@ body {
   height: 100%;
   overflow: auto;
 }
+
 /**
 --------------------------------------
 
@@ -101,14 +102,21 @@ body{
     overflow-y: hidden;
     white-space: nowrap;
   }
+
+
   
-  ::-webkit-scrollbar {
-    width: 0;  /* Remove scrollbar space */
-    background: transparent;  /* Optional: just make scrollbar invisible */
+
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 7px;
 }
-/* Optional: show position indicator in red */
+
 ::-webkit-scrollbar-thumb {
-    background: transparent;
+    border-radius: 4px;
+    background-color: #7b98bc;
+    -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+    box-shadow: 0 0 1px rgba(255,255,255,.5);
+
 }
 
 ::placeholder{
@@ -400,6 +408,7 @@ a{
     margin: 0;
     padding: 0;
     box-sizing: inherit;
+    -webkit-tap-highlight-color:  rgba(255, 255, 255, 0); 
  }
 
  .card__wrapper{
@@ -870,8 +879,7 @@ body.revise .card-back {
 
 
 /*
-
-
+ 3D cards
 */
 
 .card-3d p {
@@ -981,3 +989,13 @@ body.revise .card-back {
   display:none;
 }
 
+
+/*
+
+Fixing up stuff left behind broken.. sadge.. sorry sweetalert.min.css
+
+*/
+
+.swal2-container button{
+  position:relative;
+}

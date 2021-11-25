@@ -13,7 +13,8 @@ var SQL;
 // Huge props to http://stackoverflow.com/a/9507713/500207
 function tabulate(datatable, columns, containerString) {
     var table = d3.select(containerString).append("table"),
-        thead = table.append("thead"), tbody = table.append("tbody");
+        thead = table.append("thead"),
+        tbody = table.append("tbody");
 
     // append the header row
     thead.append("tr")
@@ -21,28 +22,46 @@ function tabulate(datatable, columns, containerString) {
         .data(columns)
         .enter()
         .append("th")
-        .text(function(column) { return column; })
-        .attr("class", function(d) { return 'field-' + d.replace(" ", "-"); });
+        .text(function(column) {
+            return column;
+        })
+        .attr("class", function(d) {
+            return 'field-' + d.replace(" ", "-");
+        });
 
     // create a row for each object in the data
     var rows = tbody.selectAll("tr").data(datatable).enter().append("tr");
 
     // create a cell in each row for each column
     var cells = rows.selectAll("td")
-                    .data(
-                         function(row) {
-                             return columns.map(function(column) {
-                                 return {column : column, value : row[column]};
-                             });
-                         })
-                    .enter()
-                    .append("td")
-                    .html(function(d) { return d.value; })
-                    .attr("class", function(d) {
-                        return 'field-' + d.column.replace(" ", "-");
-                    });
+        .data(
+            function(row) {
+                return columns.map(function(column) {
+                    return {
+                        column: column,
+                        value: row[column]
+                    };
+                });
+            })
+        .enter()
+        .append("td")
+        .html(function(d) {
+            return d.value;
+        })
+        .attr("class", function(d) {
+            return 'field-' + d.column.replace(" ", "-");
+        });
 
     return table;
+}
+
+
+function wait(ms) {
+    var start = Date.now(),
+        now = start;
+    while (now - start < ms) {
+        now = Date.now();
+    }
 }
 
 function sqlToTable(uInt8ArraySQLdb) {
@@ -66,7 +85,9 @@ function sqlToTable(uInt8ArraySQLdb) {
     });
 
     var notesByModel =
-        _.groupBy(deckNotes[0].values, function(row) { return row[0]; });
+        _.groupBy(deckNotes[0].values, function(row) {
+            return row[0];
+        });
 
     deckNotes = _.map(notesByModel, function(notesArray, modelId) {
         var modelName = models[modelId].name;
@@ -75,47 +96,41 @@ function sqlToTable(uInt8ArraySQLdb) {
             var fields = note[1].split(ankiSeparator);
             return arrayNamesToObj(fieldNames, fields);
         });
-        return {name : modelName, notes : notesArray, fieldNames : fieldNames};
+        return {
+            name: modelName,
+            notes: notesArray,
+            fieldNames: fieldNames
+        };
     });
-
-    console.log(deckNotes);
 
     window.notes = deckNotes;
-    alert("Importing...");
-    console.log(window.notes);
-
-    var re = new RegExp("\/web\/add\/subject\/[0-9]{1,9999}\/topic\/([0-9]{1,9999})\/note")
-    var match = re.exec(window.location.pathname);
-
-    window.notes[0]["notes"].forEach(function(value, key){
-      var object = {"question":value["Front"],"answer":value["Back"]}
-      CreateNote(match[1],JSON.stringify(object),false)
-    });
-    alert("Added all Notes");
 
 }
 
-function parseImages(imageTable,unzip,filenames){
+function parseImages(imageTable, unzip, filenames) {
+    console.log("Filenames " + filenames)
     var map = {};
     for (var prop in imageTable) {
-      if (filenames.indexOf(prop) >= 0) {
-        var file = unzip.decompress(prop);
-        map[imageTable[prop]] = converterEngine (file);
-      }
+        if (filenames.indexOf(prop) >= 0) {
+            var file = unzip.decompress(prop);
+            console.log(filenames[prop])
+            map[imageTable[prop]] = converterEngine(file);
+        }
     }
     d3.selectAll("img")
-      .attr("src", function(d,i) {
-        //Some filenames may be encoded. Decode them beforehand.
-        var key = decodeURI(this.src.split('/').pop());
-        if (key in map){
-          return "data:image/png;base64,"+map[key];
-        }
-          return this.src;
-      });
+        .attr("src", function(d, i) {
+            //Some filenames may be encoded. Decode them beforehand.
+            var key = decodeURI(this.src.split('/').pop());
+            console.log(this.src)
+            if (key in map) {
+                return "data:image/png;base64," + map[key];
+            }
+            return this.src;
+        });
 }
 
-function converterEngine (input) { // fn BLOB => Binary => Base64 ?
-  // adopted from https://github.com/NYTimes/svg-crowbar/issues/16
+function converterEngine(input) { // fn BLOB => Binary => Base64 ?
+    // adopted from https://github.com/NYTimes/svg-crowbar/issues/16
     var uInt8Array = new Uint8Array(input),
         i = uInt8Array.length;
     var biStr = []; //new Array(i);
@@ -126,23 +141,23 @@ function converterEngine (input) { // fn BLOB => Binary => Base64 ?
     return base64;
 };
 
-function ankiBinaryToTable(ankiArray, options) {
+async function ankiBinaryToTable(ankiArray, options) {
     var compressed = new Uint8Array(ankiArray);
     var unzip = new Zlib.Unzip(compressed);
     var filenames = unzip.getFilenames();
     if (filenames.indexOf("collection.anki2") >= 0) {
         var plain = unzip.decompress("collection.anki2");
         sqlToTable(plain);
-        if (options && options.loadImage){
-          if (filenames.indexOf("media") >= 0) {
-              var plainmedia = unzip.decompress("media");
-              var bb = new Blob([new Uint8Array(plainmedia)]);
-              var f = new FileReader();
-              f.onload = function(e) {
-                parseImages(JSON.parse(e.target.result),unzip,filenames);
-              };
-              f.readAsText(bb);
-          }
+        if (options) {
+            if (filenames.indexOf("media") >= 0) {
+                var plainmedia = unzip.decompress("media");
+                var bb = new Blob([new Uint8Array(plainmedia)]);
+                var f = new FileReader();
+                f.onload = function(e) {
+                    parseImages(JSON.parse(e.target.result), unzip, filenames);
+                };
+                f.readAsText(bb);
+            }
         }
     }
 }
@@ -158,7 +173,9 @@ function ankiURLToTable(ankiURL, options, useCorsProxy, corsProxyURL) {
     var zipxhr = new XMLHttpRequest();
     zipxhr.open('GET', (useCorsProxy ? corsProxyURL : "") + ankiURL, true);
     zipxhr.responseType = 'arraybuffer';
-    zipxhr.onload = function(e) { ankiBinaryToTable(this.response, options); };
+    zipxhr.onload = function(e) {
+        ankiBinaryToTable(this.response, options);
+    };
     zipxhr.send();
 }
 
@@ -172,47 +189,54 @@ function arrayNamesToObj(fields, values) {
 
 function displayRevlogOutputOptions() {
     var ul = d3.select("body")
-                 .append("div")
-                 .attr("id", "reviews")
-                 .append("div")
-                 .attr("id", "reviews-options")
-                 .append("ul")
-                 .attr("id", "reviews-options-list");
+        .append("div")
+        .attr("id", "reviews")
+        .append("div")
+        .attr("id", "reviews-options")
+        .append("ul")
+        .attr("id", "reviews-options-list");
     var tooMuch = 101;
     if (revlogTable.length > tooMuch) {
         ul.append('li')
             .attr("id", "tabulate-request")
             .append("button")
             .text("Tabulate " + revlogTable.length + " review" +
-                  (revlogTable.length > 1 ? "s" : ""))
-            .on("click", function() { tabulateReviews(); });
+                (revlogTable.length > 1 ? "s" : ""))
+            .on("click", function() {
+                tabulateReviews();
+            });
 
         ul.append('li')
             .attr("id", "export-request")
             .append("button")
             .text("Generate CSV spreadsheet")
-            .on("click", function() { generateReviewsCSV(); });
+            .on("click", function() {
+                generateReviewsCSV();
+            });
     } else {
         tabulateReviews();
         generateReviewsCSV();
     }
 
     var viz = ul.append('li')
-                  .attr("id", "viz-options");
+        .attr("id", "viz-options");
 
     viz.append("button").text('Visualize performance').on("click", function() {
         var selectedFields = d3.selectAll("#viz-models-list > li.viz-model")
-                                 .selectAll("input:checked");
+            .selectAll("input:checked");
         var config = selectedFields.map(function(mod) {
             mid = /[0-9]+/.exec(mod.parentNode.id)[0];
             fs = mod.map(function(sub) {
                 var fnum = /field-([0-9]+)/.exec(sub.id)[1];
                 return allModels[mid].flds[fnum].name;
             });
-            return {modelID : mid, fieldNames : fs};
+            return {
+                modelID: mid,
+                fieldNames: fs
+            };
         });
         config = arrayNamesToObj(_.pluck(config, "modelID"),
-                                 _.pluck(config, "fieldNames"));
+            _.pluck(config, "fieldNames"));
 
         revlogVisualizeProgress(config, getSelectedDeckIDs());
     });
@@ -221,11 +245,11 @@ function displayRevlogOutputOptions() {
         viz.append("ul").append('li').text("Select decks to analyze").append('ul').attr(
             "id", "viz-decks-list");
     var vizModels = viz.append("ul")
-                        .append('li')
-                        .text(
-                             "Select fields for each model to display in plots")
-                        .append('ul')
-                        .attr("id", "viz-models-list");
+        .append('li')
+        .text(
+            "Select fields for each model to display in plots")
+        .append('ul')
+        .attr("id", "viz-models-list");
 
     // Data: elements of decksReviewed (which are {deck IDs -> object})
     // TODO: enable visualization of unknown decks: .data(Object.keys(decksReviewed))
@@ -234,29 +258,33 @@ function displayRevlogOutputOptions() {
             return allDecks[did] ? allDecks[did].name : "zzzUnknown";
         });
     var vizDecksList = vizDecks.selectAll("li")
-                           .data(decksReviewedKeysAlphabetized)
-                           .enter()
-                           .append("li")
-                           .append('label')
-                           .attr('for', function(d) { return 'viz-deck-' + d; })
-                           .html(function(d, i) {
-        var thisModels =
-            _.filter(Object.keys(decksReviewed[d]).map(function(mid) {
-            return d !== "null" ? allModels[mid].name : null;
-        }), null);
-        return '<input type="checkbox" checked id="viz-deck-' + d + '"> ' +
-               (d !== "null" ? allDecks[d].name : "Unknown deck") +
-               (thisModels.length > 0
-                    ? " (contains model" +
-                          (thisModels.length > 1 ? "s " : " ") +
-                          thisModels.join(", ") + ")"
-                    : "");
-    });
+        .data(decksReviewedKeysAlphabetized)
+        .enter()
+        .append("li")
+        .append('label')
+        .attr('for', function(d) {
+            return 'viz-deck-' + d;
+        })
+        .html(function(d, i) {
+            var thisModels =
+                _.filter(Object.keys(decksReviewed[d]).map(function(mid) {
+                    return d !== "null" ? allModels[mid].name : null;
+                }), null);
+            return '<input type="checkbox" checked id="viz-deck-' + d + '"> ' +
+                (d !== "null" ? allDecks[d].name : "Unknown deck") +
+                (thisModels.length > 0 ?
+                    " (contains model" +
+                    (thisModels.length > 1 ? "s " : " ") +
+                    thisModels.join(", ") + ")" :
+                    "");
+        });
 
     $('#viz-deck-null').attr("checked", false);
 
     $('#viz-decks-list input:checkbox')
-        .click(function() { updateModelChoices(); });
+        .click(function() {
+            updateModelChoices();
+        });
     updateModelChoices();
 }
 
@@ -276,11 +304,15 @@ function updateModelChoices() {
 
     var modelIDs = _.union(_.flatten(_.map(selectedDeckIDs.map(function(did) {
         return decksReviewed[did];
-    }), function(val) { return Object.keys(val); })));
+    }), function(val) {
+        return Object.keys(val);
+    })));
 
     var vizModels = d3.select("#viz-models-list");
     var modelsData = vizModels.selectAll("li.viz-model")
-                         .data(modelIDs, function(mid) { return mid; });
+        .data(modelIDs, function(mid) {
+            return mid;
+        });
     // For an explanation of the CSS class 'viz-model' see
     // http://stackoverflow.com/a/25599142/500207
 
@@ -288,50 +320,54 @@ function updateModelChoices() {
 
     var vizModelsList =
         modelsData.enter()
-            .append("li")
-            .attr("id", function(mid) { return "viz-model-" + mid; })
-            .text(
-                 function(mid) {
-                     return mid !== "null" ? allModels[mid].name
-                                           : "Unknown model";
-                 })
-            /*.on("click", function(mid) {
-                $('#viz-model-' + mid + '-list').slideToggle();
-            })*/
-            .classed("viz-model",
-                     true).append("ul").append("li");
+        .append("li")
+        .attr("id", function(mid) {
+            return "viz-model-" + mid;
+        })
+        .text(
+            function(mid) {
+                return mid !== "null" ? allModels[mid].name :
+                    "Unknown model";
+            })
+        /*.on("click", function(mid) {
+            $('#viz-model-' + mid + '-list').slideToggle();
+        })*/
+        .classed("viz-model",
+            true).append("ul").append("li");
 
     var vizFields =
         vizModelsList.selectAll("span")
-            .data(
-                 function(d) {
-                     return d !== "null"
-                                ? (_.pluck(allModels[d].flds, 'name').map(
-                                      function(name, idx) {
-                                          return {
-                                              name : name,
-                                              modelId : d,
-                                              total : allModels[d].flds.length
-                                          };
-                                      }))
-                                : [];
-                 })
-            .enter()
-            .append("span")
-            .classed("viz-field-span", true)
-            .append("label")
-            .attr("for", function(d, i) {
-                return 'viz-model-' + d.modelId + '-field-' + i;
+        .data(
+            function(d) {
+                return d !== "null" ?
+                    (_.pluck(allModels[d].flds, 'name').map(
+                        function(name, idx) {
+                            return {
+                                name: name,
+                                modelId: d,
+                                total: allModels[d].flds.length
+                            };
+                        })) :
+                    [];
             })
-            .html(function(d, i) {
-        return '<input type="checkbox" id="viz-model-' + d.modelId + '-field-' +
-               i + '"> ' + d.name + (i + 1 < d.total ? ', ' : "");
-    });
+        .enter()
+        .append("span")
+        .classed("viz-field-span", true)
+        .append("label")
+        .attr("for", function(d, i) {
+            return 'viz-model-' + d.modelId + '-field-' + i;
+        })
+        .html(function(d, i) {
+            return '<input type="checkbox" id="viz-model-' + d.modelId + '-field-' +
+                i + '"> ' + d.name + (i + 1 < d.total ? ', ' : "");
+        });
 }
 
 function arrToCSV(dataArray, fieldsArray, linkText, d3SelectionToAppend) {
     var csv = convert(dataArray, fieldsArray);
-    var blob = new Blob([csv], {type : 'data:text/csv;charset=utf-8'});
+    var blob = new Blob([csv], {
+        type: 'data:text/csv;charset=utf-8'
+    });
     var url = URL.createObjectURL(blob);
     return d3SelectionToAppend.append("a")
         .attr("href", url)
@@ -344,22 +380,22 @@ function generateReviewsCSV() {
         "dateString,ease,interval,lastInterval,timeToAnswer,noteSortKeyFact,deckName,modelName,lapses,\
 reps,cardId,noteFactsJSON".split(','),
         "Download CSV", d3.select("#export-request").append("li").attr(
-                            "id", "export-completed"));
+            "id", "export-completed"));
     d3Selection.classed('csv-download', true);
 }
 
 function tabulateReviews() {
     tabulate(revlogTable,
-             "date,ease,interval,lastInterval,timeToAnswer,noteSortKeyFact,deckName,modelName,lapses,\
+        "date,ease,interval,lastInterval,timeToAnswer,noteSortKeyFact,deckName,modelName,lapses,\
 reps,cardId,noteFactsJSON".split(','),
-             "div#reviews");
+        "div#reviews");
 }
 
 // Note, this changes obj's parameters ("call by sharing") so the return value
 // is purely a nicety: the object WILL be changed in the caller's scope.
 function updateNestedObj(obj, outerKey, innerKey, innerVal) {
     if (!(outerKey in obj)) {
-        obj[outerKey] = {};  // don't do {innerKey: innerKey} '_'
+        obj[outerKey] = {}; // don't do {innerKey: innerKey} '_'
         obj[outerKey][innerKey] = innerVal;
     } else {
         if (!(innerKey in obj[outerKey])) {
@@ -371,10 +407,16 @@ function updateNestedObj(obj, outerKey, innerKey, innerVal) {
 
 var sqliteGlobal;
 var revlogTable;
-var decksReviewed = {}, modelsReviewed = {}, allDecks, allModels;
+var decksReviewed = {},
+    modelsReviewed = {},
+    allDecks, allModels;
+
 function ankiSQLToRevlogTable(array, options) {
     if (typeof options === 'undefined') {
-        options = {limit : 100, recent : true};
+        options = {
+            limit: 100,
+            recent: true
+        };
     }
 
     var sqliteBinary = new Uint8Array(array);
@@ -417,13 +459,15 @@ modelId,templateNum".split(',');
 
         // Convert facts string to a fact object
         var fieldNames =
-            rev.modelId
-                ? allModels[rev.modelId].flds.map(function(f) { return f.name; })
-                : null;
+            rev.modelId ?
+            allModels[rev.modelId].flds.map(function(f) {
+                return f.name;
+            }) :
+            null;
         rev.noteFacts =
             rev.noteFacts ? arrayNamesToObj(fieldNames,
-                                            rev.noteFacts.split(ankiSeparator))
-                          : unknownNoteString;
+                rev.noteFacts.split(ankiSeparator)) :
+            unknownNoteString;
         // Add model name
         rev.modelName =
             rev.modelId ? allModels[rev.modelId].name : unknownModelString;
@@ -442,9 +486,9 @@ modelId,templateNum".split(',');
         rev.dateString = rev.date.toString();
 
         // Add a JSON representation of facts
-        rev.noteFactsJSON = typeof rev.noteFacts === "object"
-                                ? JSON.stringify(rev.noteFacts)
-                                : unknownNoteString;
+        rev.noteFactsJSON = typeof rev.noteFacts === "object" ?
+            JSON.stringify(rev.noteFacts) :
+            unknownNoteString;
 
         // Switch timeToAnswer from milliseconds to seconds
         rev.timeToAnswer /= 1000;
@@ -481,7 +525,9 @@ LEFT OUTER JOIN cards ON revlog.cid=cards.id")[0].values;
 }
 
 function reduceRevlogTable(deckIDsWanted) {
-    deckIDsWanted = deckIDsWanted.map(function(i) { return parseInt(i); });
+    deckIDsWanted = deckIDsWanted.map(function(i) {
+        return parseInt(i);
+    });
 
     // See if revlogTable is sorted ascending or descending by examining the
     // first two elements.
@@ -511,14 +557,14 @@ function reduceRevlogTable(deckIDsWanted) {
         } else {
             // Fist time seeing this card ID
             dbSoFar[key] = {
-                allRevlogs : [rev],
-                reps : rev.reps,
-                lapses : rev.lapses,
+                allRevlogs: [rev],
+                reps: rev.reps,
+                lapses: rev.lapses,
                 cardId: rev.cardId,
-                modelId : rev.modelId,
-                dateLearned : rev.date,
-                noteFacts : rev.noteFacts,
-                temporalIndex : uniqueKeysSeenSoFar
+                modelId: rev.modelId,
+                dateLearned: rev.date,
+                noteFacts: rev.noteFacts,
+                temporalIndex: uniqueKeysSeenSoFar
             };
             temporalIndexToCardArray[uniqueKeysSeenSoFar] = key;
             uniqueKeysSeenSoFar++;
@@ -534,21 +580,24 @@ function reduceRevlogTable(deckIDsWanted) {
     }
 
     return {
-        revDb : revDb,
-        temporalIndexToCardArray : temporalIndexToCardArray
+        revDb: revDb,
+        temporalIndexToCardArray: temporalIndexToCardArray
     };
 }
 
 function cardAndConfigToString(cardObj, config) {
-    return config[cardObj.modelId].length > 0
-               ? (config[cardObj.modelId]
-                      .map(function(
-                          factName) { return cardObj.noteFacts[factName]; })
-                      .join(', '))
-               : ("card ID: " + cardObj.cardId);
+    return config[cardObj.modelId].length > 0 ?
+        (config[cardObj.modelId]
+            .map(function(
+                factName) {
+                return cardObj.noteFacts[factName];
+            })
+            .join(', ')) :
+        ("card ID: " + cardObj.cardId);
 }
 
 var revDb, temporalIndexToCardArray;
+
 function revlogVisualizeProgress(configModelsFacts, deckIDsWanted) {
     // This function needs to take, as logical inputs, the decks and models to
     // limit the visualization to, plus a boolean operation AND or OR to combine
@@ -579,94 +628,109 @@ function revlogVisualizeProgress(configModelsFacts, deckIDsWanted) {
 card learned. Drag to pan, and mouse-weel to zoom.", "scatter-norm-rep-lapse");
 
     appendC3Div("Performance histogram",
-                "Histogram of per-card performance, where ease of 1 is \
+        "Histogram of per-card performance, where ease of 1 is \
 failure and all other eases are success.",
-                "histogram");
+        "histogram");
 
     appendC3Div("Calendar view of acquisition",
-                "Time series showing when cards were learned. \
+        "Time series showing when cards were learned. \
 Large circles indicate perfect performance, smaller circles indicate poorer \
 performance. Zoomable and pannable.",
-                "chart");
+        "chart");
 
     appendC3Div("Scatter plot of lapses versus reps",
-                "Lapses and reps are correlated with poor \
+        "Lapses and reps are correlated with poor \
 performance, so this scatter plot cannot be easily used for analysis.",
-                "scatter-rep-lapse");
+        "scatter-rep-lapse");
 
     //------------------------------------------------------------------------
     // Pass rate per unique card
     //------------------------------------------------------------------------
     // Generate the column-wise array of arrays that c3js wants
     var chartArr = _.map(revDb, function(val, key) {
-        return [ val.dateLearned, 1 + val.temporalIndex ];
+        return [val.dateLearned, 1 + val.temporalIndex];
     });
     chartArr.unshift(['date', 'card index']);
 
     // Invoke the c3js method
     var chart = c3.generate({
-        bindto : '#chart',
-        data : {
-                 x : 'date',
-                 rows : chartArr,
-                 onmouseover :
-                     function(d, i) {
-                         $('.c3-circle-' + d.index).css({
-                             "stroke-width": 5
-                         });
-                     },
-                 onmouseout :
-                     function(d, i) {
-                         $('.c3-circle-' + d.index).css({
-                             "stroke-width": 1
-                         });
-                     }
-               },
-        axis : {
-                 y : {label : {text : "Card index"}},
-                 x : {
-                     type : 'timeseries',
-                     label : {text : "Date"},
-                     tick : {rotate : 15,  count: 50, format : '%Y-%m-%d %I:%M'},
-                     height : 40,
-                 }
-               },
-        tooltip : {
-                    format : {
-                        value : function(value, ratio, id) {
-                            // value: 1-index!
-                            var key = temporalIndexToCardArray[value-1];
-                            var str = cardAndConfigToString(revDb[key],
-                                                            configModelsFacts);
-                            var reps = revDb[key].reps;
-                            var lapses = revDb[key].lapses;
-                            return str +
-                                   " (#" + (value - 1 + 1) + ", " + (reps-lapses) +
-                                   '/' + reps + " reps passed)";
-                        }
-                    }
-                  },
-        legend : {show : false},
-        zoom : {
-                 enabled : true,
-                 extent : [
-                     1,
-                     2
-                 ]
-               },  // default is [1,10] doesn't provide enough zoooooom
-        point : {
-            focus :
-                {expand : {enabled : false}}
-        }  // don't expand a point on focus
+        bindto: '#chart',
+        data: {
+            x: 'date',
+            rows: chartArr,
+            onmouseover: function(d, i) {
+                $('.c3-circle-' + d.index).css({
+                    "stroke-width": 5
+                });
+            },
+            onmouseout: function(d, i) {
+                $('.c3-circle-' + d.index).css({
+                    "stroke-width": 1
+                });
+            }
+        },
+        axis: {
+            y: {
+                label: {
+                    text: "Card index"
+                }
+            },
+            x: {
+                type: 'timeseries',
+                label: {
+                    text: "Date"
+                },
+                tick: {
+                    rotate: 15,
+                    count: 50,
+                    format: '%Y-%m-%d %I:%M'
+                },
+                height: 40,
+            }
+        },
+        tooltip: {
+            format: {
+                value: function(value, ratio, id) {
+                    // value: 1-index!
+                    var key = temporalIndexToCardArray[value - 1];
+                    var str = cardAndConfigToString(revDb[key],
+                        configModelsFacts);
+                    var reps = revDb[key].reps;
+                    var lapses = revDb[key].lapses;
+                    return str +
+                        " (#" + (value - 1 + 1) + ", " + (reps - lapses) +
+                        '/' + reps + " reps passed)";
+                }
+            }
+        },
+        legend: {
+            show: false
+        },
+        zoom: {
+            enabled: true,
+            extent: [
+                1,
+                2
+            ]
+        }, // default is [1,10] doesn't provide enough zoooooom
+        point: {
+            focus: {
+                expand: {
+                    enabled: false
+                }
+            }
+        } // don't expand a point on focus
     });
 
     // Make the radius and opacity of each data circle depend on the pass rate
     var grader =
-        function(dbentry) { return 1 - dbentry.lapses / dbentry.reps; };
+        function(dbentry) {
+            return 1 - dbentry.lapses / dbentry.reps;
+        };
     var worstRate = grader(_.min(revDb, grader));
-    var scaleRadius = d3.scale.linear().domain([ worstRate - .005, 1 ]).range([ 2, 45 ]);
+    var scaleRadius = d3.scale.linear().domain([worstRate - .005, 1]).range([2, 45]);
     var scaleOpacity =
-        d3.scale.pow().exponent(-17).domain([ worstRate, 1 ]).range([ 1, 0.05 ]);
+        d3.scale.pow().exponent(-17).domain([worstRate, 1]).range([1, 0.05]);
 
     // The following helps smooth out the diversity of radii and opacities by
     // putting more slope in the linear scale where there's more mass in the
@@ -675,16 +739,16 @@ performance, so this scatter plot cannot be easily used for analysis.",
     // looks good, but it depends on the user's data, and requires some
     // automatic histogram analysis: TODO.
     if (false) {
-        var lin = d3.scale.linear().domain([ 0, 1 ]).range(scaleRadius.range());
+        var lin = d3.scale.linear().domain([0, 1]).range(scaleRadius.range());
         scaleRadius =
             d3.scale.linear()
-                .domain([ worstRate, .85, .93, .96, 1 ])
-                .range([ lin(0), lin(.2), lin(.8), lin(.99), lin(1) ]);
-        lin = d3.scale.linear().domain([ 0, 1 ]).range(scaleOpacity.range());
+            .domain([worstRate, .85, .93, .96, 1])
+            .range([lin(0), lin(.2), lin(.8), lin(.99), lin(1)]);
+        lin = d3.scale.linear().domain([0, 1]).range(scaleOpacity.range());
         scaleOpacity =
             d3.scale.linear()
-                .domain([ worstRate, .85, .93, .96, 1 ])
-                .range([ lin(0), lin(.2), lin(.8), lin(.99), lin(1) ]);
+            .domain([worstRate, .85, .93, .96, 1])
+            .range([lin(0), lin(.2), lin(.8), lin(.99), lin(1)]);
     }
 
     temporalIndexToCardArray.forEach(function(value, idx) {
@@ -692,13 +756,17 @@ performance, so this scatter plot cannot be easily used for analysis.",
         var rate = grader(dbentry);
         // if (idx>=557) {debugger;}
         d3.select('.c3-circle-' + idx).attr({
-            'r' : scaleRadius(rate),
+            'r': scaleRadius(rate),
             //'fill-opacity' : 0,
             //'fill' : 'none',
-            'stroke-opacity' : scaleOpacity(rate)
+            'stroke-opacity': scaleOpacity(rate)
         });
     });
-    $('.c3-circle').css({stroke : 'rgb(31,119,180)', fill: "none", "fill-opacity": 0});
+    $('.c3-circle').css({
+        stroke: 'rgb(31,119,180)',
+        fill: "none",
+        "fill-opacity": 0
+    });
 
     //------------------------------------------------------------------------
     // Histogram of pass rates
@@ -707,53 +775,94 @@ performance, so this scatter plot cannot be easily used for analysis.",
     // Include 1.01 to capture 1 in its own bin
     var binDistance = 0.01;
     var histEdges = _.range(1.01, Math.floor(worstRate * 100) / 100,
-                            -binDistance).reverse();
+        -binDistance).reverse();
 
     var histData = d3.layout.histogram().bins(histEdges)(_.map(revDb, grader));
     var normalizeHistToPercent = 1 / (temporalIndexToCardArray.length);
     var chartHistData =
-        _.map(histData, function(bar) { return [ bar.x, bar.y ]; });
-    chartHistData.unshift([ 'x', 'frequency' ]);
+        _.map(histData, function(bar) {
+            return [bar.x, bar.y];
+        });
+    chartHistData.unshift(['x', 'frequency']);
     var hist = c3.generate({
-        bindto : '#histogram',
-        data : {x : 'x', rows : chartHistData, type : "bar"},
-        bar : {width : {ratio : .95}},
-        axis : {
-                 y : {label : {text : "Number of cards"}},
-                 x : {
-                     label : {text : "Pass rate"},
-                     tick : {format : d3.format('.2p')}
+        bindto: '#histogram',
+        data: {
+            x: 'x',
+            rows: chartHistData,
+            type: "bar"
+        },
+        bar: {
+            width: {
+                ratio: .95
+            }
+        },
+        axis: {
+            y: {
+                label: {
+                    text: "Number of cards"
+                }
+            },
+            x: {
+                label: {
+                    text: "Pass rate"
+                },
+                tick: {
+                    format: d3.format('.2p')
+                }
 
-                 }
-               },
-        tooltip : {
-                    format : {
-                        value : function(value, ratio, id) {
-                            return value + ' cards (' +
-                                   d3.format('.3p')(value *
-                                                    normalizeHistToPercent) +
-                                   ' of cards)';
-                        }
-                    }
-                  },
-        legend : {show : false}
+            }
+        },
+        tooltip: {
+            format: {
+                value: function(value, ratio, id) {
+                    return value + ' cards (' +
+                        d3.format('.3p')(value *
+                            normalizeHistToPercent) +
+                        ' of cards)';
+                }
+            }
+        },
+        legend: {
+            show: false
+        }
     });
 
     //-----------------
     // Time to failure plots
     //--------------------
-    var unitRandom = function() { return (Math.random() - 0.5) * .5; };
+    var unitRandom = function() {
+        return (Math.random() - 0.5) * .5;
+    };
     var lapsesReps = temporalIndexToCardArray.map(
-        function(key, idx){return [ revDb[key].lapses + unitRandom(), revDb[key].reps + unitRandom()]});
+        function(key, idx) {
+            return [revDb[key].lapses + unitRandom(), revDb[key].reps + unitRandom()]
+        });
     lapsesReps.unshift(['lapses', 'reps']);
     var lapsesRepsChart = c3.generate({
-        bindto : '#scatter-rep-lapse',
-        data : {x : 'reps', rows : lapsesReps, type : "scatter"},
-        axis : {
-                 x : {label : {text : "# reps, integer with jitter"}, tick : {fit : false}},
-                 y : {label : {text : "# lapses, integer with jitter"}}
-               },
-        legend : {show : false}
+        bindto: '#scatter-rep-lapse',
+        data: {
+            x: 'reps',
+            rows: lapsesReps,
+            type: "scatter"
+        },
+        axis: {
+            x: {
+                label: {
+                    text: "# reps, integer with jitter"
+                },
+                tick: {
+                    fit: false
+                }
+            },
+            y: {
+                label: {
+                    text: "# lapses, integer with jitter"
+                }
+            }
+        },
+        legend: {
+            show: false
+        }
     });
 
     //-----------
@@ -767,9 +876,9 @@ performance, so this scatter plot cannot be easily used for analysis.",
     var lapsesTime = temporalIndexToCardArray.map(function(key, idx) {
         var jitteredTime = dayDiff(revDb[key].dateLearned) + unitRandom();
         jitteredTimeToCard[jitteredTime] = key;
-        return [ revDb[key].lapses + unitRandom(), jitteredTime ];
+        return [revDb[key].lapses + unitRandom(), jitteredTime];
     });
-    lapsesTime.unshift([ 'lapses', 'daysKnown' ]);
+    lapsesTime.unshift(['lapses', 'daysKnown']);
 
     /*
     var lapsesTimesTranspose = [];
@@ -779,64 +888,175 @@ performance, so this scatter plot cannot be easily used for analysis.",
             lapsesTimesTranspose[inputCol][inputRow] = lapsesTime[inputRow][inputCol];
         }
     }
-    */ /*data --> columns : lapsesTimesTranspose*/
+    */
+    /*data --> columns : lapsesTimesTranspose*/
 
     var lapsesDaysChart = c3.generate({
-        bindto : '#scatter-norm-rep-lapse',
-        data : {x : 'daysKnown', rows : lapsesTime, type : "scatter"},
-        axis : {
-                 x : {
-                       label : {text : "days known, with jitter"},
-                       tick : {fit : false}
-                     },
-                 y : {label : {text : "# lapses, with jitter"}}
-               },
-        legend : {show : false},
-        tooltip :
-            {
-              contents :
-                  function(d, defaultTitleFormat, defaultValueFormat, color) {
-                      var key = jitteredTimeToCard[d[0].x];
-                      var str = cardAndConfigToString(revDb[key],
-                                                            configModelsFacts);
-                      this.config.tooltip_format_title = function(d) {
-                          return "Known for " + d3.round(d) + " days (" + str +
-                                 ")";
-                      };
-                      this.config.tooltip_format_value =
-                          function(value, ratio, id) {
-                              return d3.round(value) + " (" + str + ")";
-                      };
-                      var retval =
-                          this.getTooltipContent
-                              ? this.getTooltipContent(d, [], [], color)
-                              : '';
-                      return retval;
-                  },
-              format : {
-                  title :
-                      function(d) {
-                          return "Known for " + d3.round(d) + " days";
-                      },
-                  name :
-                      function(id) {
-                          if (id === "lapses") {
-                              return "Lapses";
-                          }
-                          return "Card key";
-                      },
-                  value :
-                      function(value, ratio, id) {
-                          if (id === "lapses") {
-                              return d3.round(value);
-                          }
-                          return temporalIndexToCardArray[value];
-                      }
-              }
+        bindto: '#scatter-norm-rep-lapse',
+        data: {
+            x: 'daysKnown',
+            rows: lapsesTime,
+            type: "scatter"
+        },
+        axis: {
+            x: {
+                label: {
+                    text: "days known, with jitter"
+                },
+                tick: {
+                    fit: false
+                }
             },
-        zoom : {enabled : true, extent : [ 1, 2 ]}
+            y: {
+                label: {
+                    text: "# lapses, with jitter"
+                }
+            }
+        },
+        legend: {
+            show: false
+        },
+        tooltip: {
+            contents: function(d, defaultTitleFormat, defaultValueFormat, color) {
+                var key = jitteredTimeToCard[d[0].x];
+                var str = cardAndConfigToString(revDb[key],
+                    configModelsFacts);
+                this.config.tooltip_format_title = function(d) {
+                    return "Known for " + d3.round(d) + " days (" + str +
+                        ")";
+                };
+                this.config.tooltip_format_value =
+                    function(value, ratio, id) {
+                        return d3.round(value) + " (" + str + ")";
+                    };
+                var retval =
+                    this.getTooltipContent ?
+                    this.getTooltipContent(d, [], [], color) :
+                    '';
+                return retval;
+            },
+            format: {
+                title: function(d) {
+                    return "Known for " + d3.round(d) + " days";
+                },
+                name: function(id) {
+                    if (id === "lapses") {
+                        return "Lapses";
+                    }
+                    return "Card key";
+                },
+                value: function(value, ratio, id) {
+                    if (id === "lapses") {
+                        return d3.round(value);
+                    }
+                    return temporalIndexToCardArray[value];
+                }
+            }
+        },
+        zoom: {
+            enabled: true,
+            extent: [1, 2]
+        }
     });
 }
+
+
+async function uploadNotes() {
+    window.deckNotes = []
+    window.notes.forEach(function(value, key) {
+
+
+
+
+        for (var i = 0; i < window.notes[key]["notes"].length; i++) {
+            if (window.notes[key]["notes"][i].hasOwnProperty("Front") && window.notes[key]["notes"][i].hasOwnProperty("Back")) {
+                deckNotes.push(window.notes[key]["notes"][i]);
+            } else if (window.notes[key]["notes"][i].hasOwnProperty("Text")) {
+
+                var note = {
+                    "Front": 0,
+                    "Back": 0
+                };
+
+                Front = window.notes[key]["notes"][i]["Text"];
+                Back = Front;
+
+                var regex = /\{\{c1\:\:(.*?)\}\}/gm;
+                const str = Front;
+                let m;
+                while ((m = regex.exec(str)) !== null) {
+                    if (m.index === regex.lastIndex) {
+                        regex.lastIndex++;
+                    }
+                    unclozed = "<u><b>" + m[1] + "</u></b>"
+                    clozed = m[0]
+                    Back = Back.replace(clozed, unclozed)
+                    Front = Front.replace(clozed, "<b><u>(?)</u></b>")
+                }
+                regex = /\{\{c.*?\:\:(.*?)\}\}/gm;
+                while ((m = regex.exec(str)) !== null) {
+                    if (m.index === regex.lastIndex) {
+                        regex.lastIndex++;
+                    }
+                    unclozed = "<u><b>" + m[1] + "</u></b>"
+                    clozed = m[0]
+                    Back = Back.replace(clozed, unclozed)
+                    Front = Front.replace(clozed, unclozed)
+                }
+                note["Front"] = Front;
+                note["Back"] = Back;
+
+                window.deckNotes.push(note)
+            }
+        }
+
+
+    })
+
+    window.notes = window.deckNotes
+
+    var cards_num = window.notes.length
+    var b;
+
+
+
+    setTimeout(async function() {
+        b = document.getElementById("swal2-html-container")
+        t = document.getElementById("swal2-title")
+
+        t.textContent = "Your deck is uploading!"
+
+        var re = new RegExp("\/web\/add\/subject\/[0-9]{1,9999}\/topic\/([0-9]{1,9999})\/note")
+        var match = re.exec(window.location.pathname);
+
+        for (let i = 0; i < window.notes.length; i++) {
+            setTimeout(async function() {
+                value = window.notes[i]
+                console.log("Processing " + i.toString())
+
+                var object = {
+                    "question": value["Front"],
+                    "answer": value["Back"]
+                }
+                cards_num--;
+                b.textContent = 'Uploading the ' + cards_num.toString() + ' remaining cards';
+                //CreateNote(match[1],JSON.stringify(object),false)
+                wait(10);
+                if (cards_num == 0) {
+                    wait(300);
+                    swal.close()
+                }
+            }, 100)
+        }
+
+
+
+    }, 500)
+
+
+
+}
+
 
 // Lifted from
 // https://github.com/matteofigus/nice-json2csv/blob/master/lib/nice-json2csv.js
@@ -844,11 +1064,12 @@ performance, so this scatter plot cannot be easily used for analysis.",
 function fixInput(parameter) {
     if (parameter && parameter.length == undefined &&
         _.keys(parameter).length > 0)
-        parameter = [parameter];  // data is a json object instead of an array
-                                  // of json objects
+        parameter = [parameter]; // data is a json object instead of an array
+    // of json objects
 
     return parameter;
 }
+
 function getColumns(data) {
     var columns = [];
 
@@ -857,6 +1078,7 @@ function getColumns(data) {
 
     return columns;
 }
+
 function convertToCsv(data) {
     return JSON.stringify(data)
         .replace(/],\[/g, '\n')
@@ -864,6 +1086,7 @@ function convertToCsv(data) {
         .replace(/\[\[/g, '')
         .replace(/\\"/g, '""');
 }
+
 function convert(data, headers, suppressHeader) {
     if (!_.isBoolean(suppressHeader)) suppressHeader = false;
 
@@ -873,8 +1096,8 @@ function convert(data, headers, suppressHeader) {
         return "";
     }
 
-    var columns = headers ? ((typeof headers == 'string') ? [headers] : headers)
-                          : getColumns(data);
+    var columns = headers ? ((typeof headers == 'string') ? [headers] : headers) :
+        getColumns(data);
 
     var rows = [];
 
@@ -887,7 +1110,7 @@ function convert(data, headers, suppressHeader) {
         _.forEach(columns, function(column) {
             var value =
                 typeof data[i][column] == "object" && data[i][column] &&
-                    "[Object]" ||
+                "[Object]" ||
                 typeof data[i][column] == "number" && String(data[i][column]) ||
                 data[i][column] || "";
             row.push(value);
@@ -899,16 +1122,18 @@ function convert(data, headers, suppressHeader) {
 }
 
 $(document).ready(function() {
-    initSqlJs({locateFile: filename => filename}).then(function(localSQL){
+    initSqlJs({
+        locateFile: filename => filename
+    }).then(function(localSQL) {
         SQL = localSQL;
         readySetup();
     });
 });
+
 function readySetup() {
     var options = {};
-    var setOptionsImageLoad = function(){
-        options.loadImage = $('input#showImage').is(':checked');
-        return options;
+    var setOptionsImageLoad = function() {
+        return true
     }
     var eventHandleToTable = function(event) {
         event.stopPropagation();
@@ -917,14 +1142,17 @@ function readySetup() {
         if (!f) {
             f = event.dataTransfer.files[0];
         }
-        // console.log(f.name);
 
         var reader = new FileReader();
         if ("function" in event.data) {
             reader.onload =
-                function(e) { event.data.function(e.target.result); };
+                function(e) {
+                    event.data.function(e.target.result);
+                };
         } else {
-            reader.onload = function(e) { ankiBinaryToTable(e.target.result, setOptionsImageLoad()); };
+            reader.onload = function(e) {
+                ankiBinaryToTable(e.target.result, setOptionsImageLoad());
+            };
         }
         /* // If the callback doesn't need the File object, just use the above.
         reader.onload = (function(theFile) {
@@ -940,11 +1168,26 @@ function readySetup() {
     // Deck browser
     $("#ankiFile")
         .change({
-                  "function" :
-                      function(data) {
-                          ankiBinaryToTable(data, setOptionsImageLoad());
-                      }
-                }, eventHandleToTable);
+            "function": async function(data) {
+                Swal.fire({
+                    title: 'Your deck is loading!',
+                    html: 'Opening the Deck...',
+                    timerProgressBar: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    },
+                    willClose: () => {
+                        Swal.fire('Your deck is uploaded!', window.notes.length + ' cards have been added!', 'success').then((result) => {
+                            /* Read more about handling dismissals below */
+                            // run code after
+                            window.location.reload()
+                        })
+                    }
+                })
+                ankiBinaryToTable(data, setOptionsImageLoad())
+                setTimeout(uploadNotes, 1000)
+            }
+        }, eventHandleToTable);
     $("#ankiURLSubmit").click(function(event) {
         ankiURLToTable($("#ankiURL").val(), setOptionsImageLoad(), true);
         $("#ankiURL").val('');
@@ -953,38 +1196,37 @@ function readySetup() {
     // Review browser
     $("#sqliteFile")
         .change({
-                  "function" :
-                      function(data) {
-                          ankiSQLToRevlogTable(data, {
-                              limit : parseInt($('input#sqliteLimit').val()),
-                              recent : $('input#sqliteRecent').is(':checked')
-                          });
-                      },
+                "function": function(data) {
+                    ankiSQLToRevlogTable(data, {
+                        limit: parseInt($('input#sqliteLimit').val()),
+                        recent: $('input#sqliteRecent').is(':checked')
+                    });
                 },
-                eventHandleToTable);
+            },
+            eventHandleToTable);
 
     // Only for local development
     // ankiURLToTable('/n.apkg');
 };
 
 /**
-* Hook that modifies Nayr's Japanese Core5000 Anki deck
-* (see https://ankiweb.net/shared/info/631662071)
-*
-* @param {Array} deckNotes - array of Anki Notes from the above deck
-* @param {String[]} deckFields - names of the fields of the Notes
-* @return {Array} an updated version of deckNotes
-*
-* Each Note object containing properties Expression, Meaning, Reading, English
-* Translation, Word, Frequency Order, and Sound.
-*
-* Kana in the "Reading" field will be changed from "[kana]" to being wrapped in
-*<span> tags. And each of the items in the "Word" field, which contains the
-*Japanese word, its reading in roumaji (Latin characters), one or more
-*parts-of-speech, and English translations, will be encased in <span> tags
-*(ideally these would be their own independent fields, but some rows have more
-*than one part-of-speech).
-*/
+ * Hook that modifies Nayr's Japanese Core5000 Anki deck
+ * (see https://ankiweb.net/shared/info/631662071)
+ *
+ * @param {Array} deckNotes - array of Anki Notes from the above deck
+ * @param {String[]} deckFields - names of the fields of the Notes
+ * @return {Array} an updated version of deckNotes
+ *
+ * Each Note object containing properties Expression, Meaning, Reading, English
+ * Translation, Word, Frequency Order, and Sound.
+ *
+ * Kana in the "Reading" field will be changed from "[kana]" to being wrapped in
+ *<span> tags. And each of the items in the "Word" field, which contains the
+ *Japanese word, its reading in roumaji (Latin characters), one or more
+ *parts-of-speech, and English translations, will be encased in <span> tags
+ *(ideally these would be their own independent fields, but some rows have more
+ *than one part-of-speech).
+ */
 function core5000Modify(deckNotes, deckFields, deckName) {
     d3.select("body").append("div").attr("id", "core5000");
     d3.select("#core5000").append("h2").text(deckName);
@@ -1046,8 +1288,8 @@ case,p. conj.,p. disc.,pron.,v.,suffix,prefix".split(',');
             // Add space between Japanese and reading
             seqString = "（お）姉さん (o)-nee-san n. elder sister";
         } else if (0 ==
-                   seqString.localeCompare(
-                       "相変わらず ai-kawara zu adv as ever, as usual, the \
+            seqString.localeCompare(
+                "相変わらず ai-kawara zu adv as ever, as usual, the \
 same, as before [always]")) {
             // Add dot to "adv", completing the abbreviation instead of adding
             // another abbreviation which might trigger elsewhere
@@ -1063,11 +1305,17 @@ before [always]";
         var arr = seqString.split(XRegExp('(' + abbreviationsOr + ')'));
 
         var isAbbreviation = arr.map(
-            function(x) { return abbreviations.indexOf(x) >= 0 ? 1 : 0; });
+            function(x) {
+                return abbreviations.indexOf(x) >= 0 ? 1 : 0;
+            });
         var isWhitePunctuation =
-            arr.map(function(x) { return x.match(/^[\s,]*$/) ? 1 : 0; });
+            arr.map(function(x) {
+                return x.match(/^[\s,]*$/) ? 1 : 0;
+            });
         var isAbbrOrWhitePunct = isAbbreviation.map(
-            function(x, i) { return x + isWhitePunctuation[i]; });
+            function(x, i) {
+                return x + isWhitePunctuation[i];
+            });
 
         // combineJunk will find [..., "adv.", ",", "na-adj.", ...] and splice
         // it into [..., "adv., na-adj.", ...].
@@ -1094,21 +1342,21 @@ before [always]";
         // groups corresponding to the two regexps.
         var kanaKanjiMatch =
             seqString.match(XRegExp(kanaKanjiWordRegexp + ' ' + romajiRegexp +
-                                    ' ' + partOfSpeechRegexp));
+                ' ' + partOfSpeechRegexp));
 
-        if (0==seqString.localeCompare("Oa oobii n. OB (old boy), alumnus")) {
+        if (0 == seqString.localeCompare("Oa oobii n. OB (old boy), alumnus")) {
             return {
-                pos : pos,
-                translation : translation,
-                word : "OB",
-                romaji : "oobii"
+                pos: pos,
+                translation: translation,
+                word: "OB",
+                romaji: "oobii"
             };
         }
         return {
-            pos : pos,
-            translation : translation,
-            word : kanaKanjiMatch[1],
-            romaji : kanaKanjiMatch[2]
+            pos: pos,
+            translation: translation,
+            word: kanaKanjiMatch[1],
+            romaji: kanaKanjiMatch[2]
         };
     };
 
@@ -1123,7 +1371,10 @@ before [always]";
                 i++;
             }
         }
-        return {data_array : data_array, indicator_array : indicator_array};
+        return {
+            data_array: data_array,
+            indicator_array: indicator_array
+        };
     }
 
     // Get rid of &nbsp; and such. It'll mess up my regexping.
@@ -1144,12 +1395,12 @@ before [always]";
             var decomp = bar(s);
             var posTrans = decomp.pos.map(function(pos, i) {
                 return '<span class="part-of-speech">' + pos +
-                       '</span> <span class="target-words-meaning">' +
-                       decomp.translation[i] + '</span>';
+                    '</span> <span class="target-words-meaning">' +
+                    decomp.translation[i] + '</span>';
             }).join(" ");
             return '<span class="target-words">' + decomp.word +
-                   '</span> <span class="target-words-romaji">' +
-                   decomp.romaji + "</span> " + posTrans;
+                '</span> <span class="target-words-romaji">' +
+                decomp.romaji + "</span> " + posTrans;
         }).join("<div>");
     };
 
@@ -1172,9 +1423,9 @@ before [always]";
 
         // Replace [kana] with spans
         note.Reading = note.Reading.replace(kanaRegexp,
-                                            function(match, kana, offset, str) {
-            return '<span class="reading kana">' + kana + '</span>';
-        });
+            function(match, kana, offset, str) {
+                return '<span class="reading kana">' + kana + '</span>';
+            });
 
         return note;
     });
@@ -1202,11 +1453,11 @@ function specialDisplayHandlers() {
         modifiedDeckNotes = _.map(
             _.filter(deckNotes, function(model) {
                 return 0 ==
-                       "Nayr's Japanese Core5000".localeCompare(model.name);
+                    "Nayr's Japanese Core5000".localeCompare(model.name);
             }),
             function(model) {
                 return core5000Modify(model.notes, model.fieldNames,
-                                      model.name);
+                    model.name);
             });
         if (modifiedDeckNotes.length > 0) {
             return 1;
@@ -1216,6 +1467,10 @@ function specialDisplayHandlers() {
 }
 
 var summer = function(arr) {
-    return _.reduce(arr, function(memo, num) { return memo + num; }, 0);
+    return _.reduce(arr, function(memo, num) {
+        return memo + num;
+    }, 0);
 };
-var mean = function(arr) { return summer(arr) / arr.length; };
+var mean = function(arr) {
+    return summer(arr) / arr.length;
+};
